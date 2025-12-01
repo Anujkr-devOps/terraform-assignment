@@ -1,0 +1,1 @@
+#Input variables (CIDR blocks, instance types, etc) for flexibility and reusabilityurces (VPC,EC2,etc)

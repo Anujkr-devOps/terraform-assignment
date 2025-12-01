@@ -1,0 +1,1 @@
+#outputs like VPC ID, Subnet IDs, EC2 instance public IPs for easy reference
