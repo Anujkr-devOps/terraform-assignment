@@ -65,3 +65,37 @@ resource "aws_route_table_association" "public_subnet_2_assoc" {
   subnet_id      = aws_subnet.public_subnet_2.id
   route_table_id = aws_route_table.public_rt.id
 }
+
+# Security Group for Web Servers
+resource "aws_security_group" "web_sg" {
+  name        = "web-server-sg"
+  description = "Allow HTTP and SSH"
+  vpc_id      = aws_vpc.main_vpc.id
+
+  ingress {
+    description = "Allow HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["YOUR_PUBLIC_IP/32"] # Replace with your IP for security
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "WebServerSG"
+  }
+}
