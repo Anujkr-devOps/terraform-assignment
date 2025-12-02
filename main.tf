@@ -99,3 +99,62 @@ resource "aws_security_group" "web_sg" {
     Name = "WebServerSG"
   }
 }
+
+# EC2 Instance in AZ1
+resource "aws_instance" "web_server_1" {
+  ami           = "ami-0c02fb55956c7d316" #Amazon Linux 2 AMI 
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.public_subnet_1.id
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
+  key_name      = "firstkeypair" 
+  user_data = <<-EOF
+              #!/bin/bash
+              yum update -y
+              yum install -y nginx
+              systemctl start nginx
+              systemctl enable nginx
+              echo "<h1>Hello from Web Server 1</h1>" > /usr/share/nginx/html/index.html
+              EOF
+
+  tags = {
+    Name = "WebServer-AZ1"
+  }
+}
+
+# EC2 Instance in AZ2
+resource "aws_instance" "web_server_2" {
+  ami           = "ami-0c02fb55956c7d316"
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.public_subnet_2.id
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
+  key_name      = "firstkeypair"
+
+  user_data = <<-EOF
+              #!/bin/bash
+              yum update -y
+              yum install -y nginx
+              systemctl start nginx
+              systemctl enable nginx
+              echo "<h1>Hello from Web Server 2</h1>" > /usr/share/nginx/html/index.html
+              EOF
+
+  tags = {
+    Name = "WebServer-AZ2"
+  }
+}
+
+# Elastic IP for Web Server 1
+resource "aws_eip" "eip_1" {
+  instance = aws_instance.web_server_1.id
+  tags = {
+    Name = "ElasticIP-WebServer1"
+  }
+}
+
+# Elastic IP for Web Server 2
+resource "aws_eip" "eip_2" {
+  instance = aws_instance.web_server_2.id
+  tags = {
+    Name = "ElasticIP-WebServer2"
+  }
+}
