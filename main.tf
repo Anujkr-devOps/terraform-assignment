@@ -253,9 +253,3 @@ resource "aws_lb_target_group_attachment" "web_server_2_attach" {
   port             = 80
 }
 
-# -------------------------------
-# Outputs
-# -------------------------------
-output "alb_dns_name" {
-  value = aws_lb.app_lb.dns_name
-}
