@@ -1,3 +1,11 @@
+# data.tf
+# Always gets the latest Amazon Linux 2 (AL2) HVM x86_64 AMI in this region
+data "aws_ssm_parameter" "al2_latest_ami" {
+  name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+}
+
+
+
 # -------------------------------
 # VPC
 # -------------------------------
@@ -109,7 +117,7 @@ resource "aws_security_group" "web_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["YOUR_PUBLIC_IP/32"] # Replace with your IP
+    cidr_blocks = ["37.228.202.139/32"] # Replace with your IP
   }
 
   egress {
@@ -153,45 +161,39 @@ resource "aws_security_group" "alb_sg" {
 # EC2 Instances
 # -------------------------------
 resource "aws_instance" "web_server_1" {
-  ami           = "ami-0c02fb55956c7d316"
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.public_subnet_az1.id
+  ami                    = data.aws_ssm_parameter.al2_latest_ami.value
+  instance_type          = var.instance_type      # reuse variable for consistency
+  subnet_id              = aws_subnet.private_subnet_az1.id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
-  key_name      = "firstkeypair"
+  key_name               = var.key_name
 
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
               yum install -y nginx
-              systemctl start nginx
-              systemctl enable nginx
+              systemctl enable --now nginx
               echo "<h1>Hello from Web Server 1</h1>" > /usr/share/nginx/html/index.html
               EOF
 
-  tags = {
-    Name = "WebServer-AZ1"
-  }
+  tags = { Name = "WebServer-AZ1" }
 }
 
 resource "aws_instance" "web_server_2" {
-  ami           = "ami-0c02fb55956c7d316"
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.public_subnet_az2.id
+  ami                    = data.aws_ssm_parameter.al2_latest_ami.value
+  instance_type          = var.instance_type
+  subnet_id              = aws_subnet.private_subnet_az2.id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
-  key_name      = "firstkeypair"
+  key_name               = var.key_name
 
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
               yum install -y nginx
-              systemctl start nginx
-              systemctl enable nginx
+              systemctl enable --now nginx
               echo "<h1>Hello from Web Server 2</h1>" > /usr/share/nginx/html/index.html
               EOF
 
-  tags = {
-    Name = "WebServer-AZ2"
-  }
+  tags = { Name = "WebServer-AZ2" }
 }
 
 # -------------------------------
@@ -251,5 +253,52 @@ resource "aws_lb_target_group_attachment" "web_server_2_attach" {
   target_group_arn = aws_lb_target_group.app_tg.arn
   target_id        = aws_instance.web_server_2.id
   port             = 80
+}
+
+# -------------------------------
+# Allocate Elastic IP for NAT Gateway
+# -------------------------------
+resource "aws_eip" "nat_eip" {
+ 
+  tags = {
+    Name = "TerraformAssignmentNAT-EIP"
+  }
+}
+
+# -------------------------------
+#Create NAT Gateway for Private Subnets
+# -------------------------------
+resource "aws_nat_gateway" "nat_gw" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public_subnet_az1.id
+  tags = {
+    Name = "TerraformAssignmentNAT-GW"
+  }
+}
+
+# -------------------------------
+# Crete Private Route Table
+# ------------------------------- 
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.main_vpc.id
+  tags = {
+    Name = "PrivateRouteTable"
+  }
+}
+
+resource "aws_route" "private_default_route" {
+  route_table_id         = aws_route_table.private_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat_gw.id
+}
+
+resource "aws_route_table_association" "private_subnet_az1_assoc" {
+  subnet_id      = aws_subnet.private_subnet_az1.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+resource "aws_route_table_association" "private_subnet_az2_assoc" {
+  subnet_id      = aws_subnet.private_subnet_az2.id
+  route_table_id = aws_route_table.private_rt.id
 }
 
