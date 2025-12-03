@@ -170,8 +170,9 @@ resource "aws_instance" "web_server_1" {
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
-              yum install -y nginx
+              yum install -y nginx amazon-ssm-agent
               systemctl enable --now nginx
+              systemctl enable --now amazon-ssm-agent
               echo "<h1>Hello from Web Server 1</h1>" > /usr/share/nginx/html/index.html
               EOF
 
@@ -188,8 +189,9 @@ resource "aws_instance" "web_server_2" {
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
-              yum install -y nginx
+              yum install -y nginx amazon-ssm-agent
               systemctl enable --now nginx
+              systemctl enable --now amazon-ssm-agent
               echo "<h1>Hello from Web Server 2</h1>" > /usr/share/nginx/html/index.html
               EOF
 
